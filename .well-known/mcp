@@ -1,0 +1,10 @@
+{
+  "name": "Bounceless Docs",
+  "description": "Search and read Bounceless public documentation. Read-only; does not run product verification APIs.",
+  "version": "1.0.0",
+  "transport": "http",
+  "capabilities": [
+    "search",
+    "read"
+  ]
+}
