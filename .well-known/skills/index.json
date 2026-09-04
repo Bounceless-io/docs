@@ -2,6 +2,7 @@
   "skills": [
     {
       "name": "bounceless",
+      "description": "Verify individual email addresses or batches with Bounceless through its API, MCP server, or CLI.",
       "files": [
         "SKILL.md"
       ]
