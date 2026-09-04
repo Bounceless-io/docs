@@ -1,0 +1,20 @@
+---
+title: "MCP"
+description: "Use the Bounceless product MCP server from an MCP client."
+---
+
+The product MCP package is `@bounceless/mcp`. Configure `BOUNCELESS_API_KEY` in your MCP client's secret environment, then ask the server to verify a single address or a batch.
+
+```json
+{
+  "mcpServers": {
+    "bounceless": {
+      "command": "npx",
+      "args": ["-y", "@bounceless/mcp"],
+      "env": { "BOUNCELESS_API_KEY": "${BOUNCELESS_API_KEY}" }
+    }
+  }
+}
+```
+
+Do not paste the key into a prompt. The documentation integration only helps clients search these pages; it does not expose Bounceless API endpoints as tools.

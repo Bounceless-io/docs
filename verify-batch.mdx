@@ -1,0 +1,23 @@
+---
+title: "Verify batch"
+description: "Submit a batch, poll its status, and retrieve results."
+---
+
+Create a request. The first submission returns `202`; replaying the same body with the same `Idempotency-Key` returns `200` and the same `request.id`.
+
+```bash
+curl -sS https://api.bounceless.io/v1/requests -X POST \
+  -H "X-Api-Key: $BOUNCELESS_API_KEY" \
+  -H "Idempotency-Key: batch-001" \
+  -H "Content-Type: application/json" \
+  -d '{"emails":["first@example.com","second@example.com"]}'
+```
+
+Poll and retrieve a page of results:
+
+```bash
+curl -sS "https://api.bounceless.io/v1/requests/$REQUEST_ID" -H "X-Api-Key: $BOUNCELESS_API_KEY"
+curl -sS "https://api.bounceless.io/v1/requests/$REQUEST_ID/results?limit=50&offset=0" -H "X-Api-Key: $BOUNCELESS_API_KEY"
+```
+
+Continue paging while results remain. `partial` indicates an incomplete page and `finalized` indicates that processing is complete.

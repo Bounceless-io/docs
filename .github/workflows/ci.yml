@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Shell integrity
+        run: |
+          test -f LICENSE
+          test -f README.md
+          test -f SECURITY.md
+          test -f .github/workflows/ci.yml
+      - name: CI must not reference Actions secrets context
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          needle = "${" + "{ secrets."
+          hits = []
+          root = Path(".github/workflows")
+          for path in root.rglob("*"):
+              if not path.is_file():
+                  continue
+              text = path.read_text(encoding="utf-8", errors="replace")
+              for lineno, line in enumerate(text.splitlines(), 1):
+                  if needle in line and "needle = " not in line:
+                      hits.append(f"{path}:{lineno}")
+          if hits:
+              raise SystemExit("Actions secrets context is forbidden in bootstrap CI")
+          PY
+      - name: No credential-shaped files in tree
+        run: |
+          hits="$(find . -path ./.git -prune -o \( -name '.env' -o -name '*.pem' -o -name '*.p12' -o -name 'id_rsa*' \) -print)"
+          if [ -n "$hits" ]; then
+            echo "credential-shaped files are forbidden in this bootstrap" >&2
+            echo "$hits" >&2
+            exit 1
+          fi

@@ -1,0 +1,7 @@
+---
+title: "Create a batch"
+description: "Submit a batch verification request."
+openapi: "POST /v1/requests"
+---
+
+Use a stable `Idempotency-Key` for an identical submission. Creation returns `202`; a replay returns `200` with the same request ID.

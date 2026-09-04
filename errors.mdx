@@ -1,0 +1,17 @@
+---
+title: "Errors, limits, and retries"
+description: "Handle request errors and retries safely."
+---
+
+Errors use an `error` object with `code`, `message`, and `requestId`. Responses also carry `X-Request-Id`.
+
+| Status | Meaning | Action |
+| --- | --- | --- |
+| `400` / `422` | Invalid input | Fix the request; do not retry unchanged. |
+| `401` | Missing or invalid key | Check `X-Api-Key` without logging it. |
+| `402` | Account cannot fund this operation | Resolve the account state. |
+| `404` | Request is absent or belongs to another account | Check the request ID and key. |
+| `429` | Rate limit exceeded | Wait for `Retry-After`, then retry with jitter. |
+| `502` / `503` | Temporary upstream or service failure | Retry with exponential backoff. |
+
+Reuse the same `Idempotency-Key` only for an identical write. Never rotate the key merely because a response timed out.

@@ -1,0 +1,12 @@
+---
+title: "API keys"
+description: "Authenticate safely with X-Api-Key."
+---
+
+Send your Bounceless key in the `X-Api-Key` header on every request.
+
+```bash
+--header "X-Api-Key: $BOUNCELESS_API_KEY"
+```
+
+Keys use the `blc.…` format. Put the key in a secret manager or environment variable, never in code, logs, prompts, screenshots, or committed files. A missing or invalid key returns `401` with an `X-Request-Id` response header.

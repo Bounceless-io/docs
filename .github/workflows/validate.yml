@@ -1,0 +1,25 @@
+name: Validate documentation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Validate native Mintlify skill source
+        run: |
+          test "$(sed -n '1p' skill.md)" = '---'
+          test "$(sed -n '2p' skill.md)" = 'name: bounceless'
+          grep -q '^description:' skill.md
+      - name: Scan public sources for accidental credentials
+        run: '! grep -RInE "(sk-[A-Za-z0-9]{20,}|blc\.[A-Za-z0-9_-]{16,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY)" --exclude-dir=.git --exclude=package-lock.json .'

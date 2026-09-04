@@ -1,0 +1,17 @@
+---
+title: "Verify single"
+description: "Verify one email address."
+---
+
+`POST /v1/verify` accepts one address and a required idempotency key.
+
+```bash
+curl -sS https://api.bounceless.io/v1/verify \
+  -X POST \
+  -H "X-Api-Key: $BOUNCELESS_API_KEY" \
+  -H "Idempotency-Key: verify-$(date +%s)" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","timeoutMs":30000}'
+```
+
+The response contains `status`, `requestId`, and the available result fields. Treat unknown outcomes as inconclusive; they are not billed.

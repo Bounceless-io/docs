@@ -1,0 +1,15 @@
+{
+  "name": "bounceless-docs",
+  "private": true,
+  "scripts": {
+    "dev": "mint dev",
+    "validate": "mint validate",
+    "build": "mint export",
+    "links": "mint broken-links",
+    "check": "npm run validate && npm run links && npm run build"
+  },
+  "devDependencies": {
+    "mint": "4.2.873",
+    "yaml": "2.8.1"
+  }
+}

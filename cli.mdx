@@ -1,0 +1,14 @@
+---
+title: "CLI"
+description: "Verify single addresses and batches from a shell."
+---
+
+Configure the key once in your shell, then use the Bounceless CLI:
+
+```bash
+export BOUNCELESS_API_KEY="blc.your_key"
+npx @bounceless/cli verify test@example.com
+npx @bounceless/cli batch ./emails.txt --wait --output results.jsonl
+```
+
+Keep input and result files out of public repositories. For automation, inspect the exit code and store results in access-controlled storage.

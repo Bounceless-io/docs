@@ -1,0 +1,167 @@
+openapi: 3.1.0
+info:
+  title: Bounceless API
+  version: "1"
+  description: GA single and batch email verification. Unknown outcomes are not billed and credits never expire.
+servers:
+  - url: https://api.bounceless.io
+security:
+  - apiKey: []
+paths:
+  /v1/verify:
+    post:
+      summary: Verify one email address.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyInput' }
+      responses:
+        "200": { description: Completed, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyResult' } } } }
+        "202": { description: Still running, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyResult' } } } }
+        "400": { $ref: '#/components/responses/Error' }
+        "401": { $ref: '#/components/responses/Error' }
+        "402": { $ref: '#/components/responses/Error' }
+        "429": { $ref: '#/components/responses/Limited' }
+        "502": { $ref: '#/components/responses/Error' }
+        "503": { $ref: '#/components/responses/Error' }
+  /v1/requests:
+    post:
+      summary: Create a batch verification request.
+      description: Creation returns 202. A replay with the same Idempotency-Key and body returns 200 with the same request.id.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchInput' }
+      responses:
+        "200": { description: Idempotent replay, content: { application/json: { schema: { $ref: '#/components/schemas/BatchRequest' } } } }
+        "202": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/BatchRequest' } } } }
+        "400": { $ref: '#/components/responses/Error' }
+        "401": { $ref: '#/components/responses/Error' }
+        "402": { $ref: '#/components/responses/Error' }
+        "404": { $ref: '#/components/responses/Error' }
+        "422": { $ref: '#/components/responses/Error' }
+        "429": { $ref: '#/components/responses/Limited' }
+        "503": { $ref: '#/components/responses/Error' }
+  /v1/requests/{id}:
+    get:
+      summary: Get a batch verification request.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        "200": { description: Request status, content: { application/json: { schema: { $ref: '#/components/schemas/BatchRequest' } } } }
+        "401": { $ref: '#/components/responses/Error' }
+        "404": { $ref: '#/components/responses/Error' }
+        "429": { $ref: '#/components/responses/Limited' }
+  /v1/requests/{id}/results:
+    get:
+      summary: Get batch verification results.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        "200": { description: Paginated results, content: { application/json: { schema: { $ref: '#/components/schemas/ResultsPage' } } } }
+        "401": { $ref: '#/components/responses/Error' }
+        "404": { $ref: '#/components/responses/Error' }
+        "429": { $ref: '#/components/responses/Limited' }
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Bounceless key in blc.… format.
+  headers:
+    RequestId:
+      description: Request correlation identifier.
+      schema: { type: string }
+  parameters:
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 1 } }
+    RequestId: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+    Offset: { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+  responses:
+    Error:
+      description: Error response.
+      headers: { X-Request-Id: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Limited:
+      description: Rate limit exceeded.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+        Retry-After: { description: Seconds before retrying, schema: { type: integer, minimum: 1 } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          additionalProperties: false
+          properties: { code: { type: string }, message: { type: string }, requestId: { type: string } }
+    VerifyInput:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+        timeoutMs: { type: integer, minimum: 1, maximum: 120000 }
+    VerifyResult:
+      type: object
+      required: [status, requestId]
+      properties:
+        status: { type: string }
+        decision: { type: [object, "null"] }
+        requestId: { type: string }
+    BatchInput:
+      type: object
+      required: [emails]
+      additionalProperties: false
+      properties:
+        emails: { type: array, minItems: 1, maxItems: 10000, items: { type: string, format: email, maxLength: 320 } }
+    RequestDescriptor:
+      type: object
+      required: [id, mode, state, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        mode: { type: string }
+        state: { type: string }
+        createdAt: { type: string, format: date-time }
+    Counters: { type: object, additionalProperties: { type: integer, minimum: 0 } }
+    BatchRequest:
+      type: object
+      required: [request, counters, requestId]
+      properties:
+        request: { $ref: '#/components/schemas/RequestDescriptor' }
+        counters: { $ref: '#/components/schemas/Counters' }
+        replayed: { type: boolean }
+        requestId: { type: string }
+    ResultItem:
+      type: object
+      properties:
+        email: { type: string }
+        state: { type: string }
+        score: { type: [number, "null"] }
+        subStatus: { type: [string, "null"] }
+        reasonCodes: { type: [array, "null"], items: { type: string } }
+        decision: { type: [object, "null"] }
+    ResultsPage:
+      type: object
+      required: [jobId, results, limit, offset, requestId]
+      properties:
+        jobId: { type: string, format: uuid }
+        results: { type: array, items: { $ref: '#/components/schemas/ResultItem' } }
+        limit: { type: integer }
+        offset: { type: integer }
+        partial: { type: boolean }
+        finalized: { type: boolean }
+        requestId: { type: string }
