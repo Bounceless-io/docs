@@ -3,10 +3,13 @@ info:
   title: Bounceless API
   version: "1"
   description: GA single and batch email verification. Unknown outcomes are not billed and credits never expire.
+  x-bounceless-presend-contract-version: 1
+  x-bounceless-compatibility: Legacy sibling fields remain available during the Pre-Send v1 compatibility window.
 servers:
   - url: https://api.bounceless.io
 security:
   - apiKey: []
+  - bearerAuth: []
 paths:
   /v1/verify:
     post:
@@ -20,7 +23,7 @@ paths:
             schema: { $ref: '#/components/schemas/VerifyInput' }
       responses:
         "200": { description: Completed, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyResult' } } } }
-        "202": { description: Still running, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyResult' } } } }
+        "202": { description: Accepted without a decision. No public single-result polling route is part of the four-route GA contract., content: { application/json: { schema: { $ref: '#/components/schemas/VerifyResult' } } } }
         "400": { $ref: '#/components/responses/Error' }
         "401": { $ref: '#/components/responses/Error' }
         "402": { $ref: '#/components/responses/Error' }
@@ -64,6 +67,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/RequestId'
         - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Offset'
       responses:
         "200": { description: Paginated results, content: { application/json: { schema: { $ref: '#/components/schemas/ResultsPage' } } } }
@@ -76,7 +80,12 @@ components:
       type: apiKey
       in: header
       name: X-Api-Key
-      description: Bounceless key in blc.… format.
+      description: Canonical authentication. Send a Bounceless key in blc.… format.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Bounceless API key
+      description: Compatibility authentication. New integrations should use X-Api-Key.
   headers:
     RequestId:
       description: Request correlation identifier.
@@ -85,7 +94,17 @@ components:
     IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 1 } }
     RequestId: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
-    Offset: { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor returned as nextCursor by the preceding page. Canonical for new integrations.
+      schema: { type: string, minLength: 1 }
+    Offset:
+      name: offset
+      in: query
+      deprecated: true
+      description: Compatibility pagination. New integrations should use cursor and nextCursor.
+      schema: { type: integer, minimum: 0, default: 0 }
   responses:
     Error:
       description: Error response.
@@ -117,25 +136,49 @@ components:
         timeoutMs: { type: integer, minimum: 1, maximum: 120000 }
     VerifyResult:
       type: object
-      required: [status, requestId]
+      required: [status, presend, requestId]
       properties:
-        status: { type: string }
+        status: { type: string, enum: [completed, queued, running] }
         decision: { type: [object, "null"] }
+        presend: { $ref: '#/components/schemas/ClientDecisionEnvelopeV1' }
+        engine:
+          allOf:
+            - $ref: '#/components/schemas/EngineMetadata'
+          description: Present on a completed 200 response and absent while a 202 response is still accepted or running.
+        engineJobId: { type: string, description: Present on a 202 accepted response. No public single-result polling route is defined by this contract. }
         requestId: { type: string }
+    EngineMetadata:
+      type: object
+      additionalProperties: false
+      required: [verifiedAt, attempts, providerFamily]
+      properties:
+        verifiedAt: { type: string, format: date-time }
+        attempts: { type: integer, minimum: 0 }
+        providerFamily: { type: string }
     BatchInput:
       type: object
-      required: [emails]
       additionalProperties: false
+      description: Provide exactly one input source. Use emails for an inline batch or listId for a ready list already stored in the account.
+      oneOf:
+        - required: [emails]
+        - required: [listId]
       properties:
         emails: { type: array, minItems: 1, maxItems: 10000, items: { type: string, format: email, maxLength: 320 } }
+        listId: { type: string, format: uuid }
     RequestDescriptor:
       type: object
-      required: [id, mode, state, createdAt]
+      required: [id, mode, state, createdAt, partial, finalized, countsMayChange]
       properties:
         id: { type: string, format: uuid }
         mode: { type: string }
         state: { type: string }
+        errorCode: { type: [string, "null"] }
+        retentionExpiresAt: { type: [string, "null"], format: date-time }
         createdAt: { type: string, format: date-time }
+        partial: { type: boolean }
+        finalized: { type: boolean }
+        countsMayChange: { type: boolean }
+        finalization: { type: [object, "null"] }
     Counters: { type: object, additionalProperties: { type: integer, minimum: 0 } }
     BatchRequest:
       type: object
@@ -149,19 +192,74 @@ components:
       type: object
       properties:
         email: { type: string }
+        checkedAt: { type: string, format: date-time }
         state: { type: string }
         score: { type: [number, "null"] }
         subStatus: { type: [string, "null"] }
         reasonCodes: { type: [array, "null"], items: { type: string } }
         decision: { type: [object, "null"] }
+        presend: { $ref: '#/components/schemas/ClientDecisionEnvelopeV1' }
     ResultsPage:
       type: object
-      required: [jobId, results, limit, offset, requestId]
+      required: [jobId, results, limit, offset, nextCursor, partial, finalized, countsMayChange, requestId]
       properties:
         jobId: { type: string, format: uuid }
         results: { type: array, items: { $ref: '#/components/schemas/ResultItem' } }
         limit: { type: integer }
         offset: { type: integer }
+        nextCursor:
+          type: [string, "null"]
+          description: Pass a non-null value back as cursor. Null marks the last current page; only a finalized request is a complete collection.
         partial: { type: boolean }
         finalized: { type: boolean }
+        countsMayChange:
+          type: boolean
+          description: True only while the request can still change the result counters.
         requestId: { type: string }
+    PublicVerdict:
+      type: string
+      enum: [DELIVERABLE, UNDELIVERABLE_NO_MAILBOX, UNDELIVERABLE_NO_MAIL_SERVER, UNDELIVERABLE_BOUNCED, CATCH_ALL, MAILBOX_FULL, DISPOSABLE, ROLE, SPAMTRAP, RISKY_SPAMTRAP, BLACKLISTED, GREYLISTED, TRANSIENT, UNKNOWN, UNKNOWN_WEBMAIL]
+    PreSendDecision:
+      type: string
+      enum: [send, suppress, send_with_caution, enrich_first, recheck_later, manual_review, do_not_decide]
+    RetryWindow:
+      type: object
+      additionalProperties: false
+      required: [eligible_at, expires_at, affinity_required]
+      properties:
+        eligible_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        affinity_required: { type: boolean }
+    Billing:
+      type: object
+      additionalProperties: false
+      required: [disposition, credits]
+      properties:
+        disposition: { type: string, enum: [debited, held, released] }
+        credits: { type: integer, minimum: 0 }
+    ClientDecisionEnvelopeV1:
+      type: object
+      additionalProperties: false
+      required: [contract_version, status, outcome, decision, verdict, provider_family, confidence, reasons, evidence_class, retry, billing, history]
+      properties:
+        contract_version: { type: integer, const: 1 }
+        status: { type: string, enum: [completed, running, recheck_scheduled, failed, rejected] }
+        outcome: { type: string, enum: [actionable_verdict, pending, non_verdict] }
+        decision:
+          oneOf:
+            - $ref: '#/components/schemas/PreSendDecision'
+            - type: "null"
+        verdict:
+          oneOf:
+            - $ref: '#/components/schemas/PublicVerdict'
+            - type: "null"
+        provider_family: { type: [string, "null"] }
+        confidence: { type: [number, "null"], minimum: 0, maximum: 1 }
+        reasons: { type: array, items: { type: string } }
+        evidence_class: { type: [string, "null"] }
+        retry:
+          oneOf:
+            - $ref: '#/components/schemas/RetryWindow'
+            - type: "null"
+        billing: { $ref: '#/components/schemas/Billing' }
+        history: { type: [object, "null"] }

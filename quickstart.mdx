@@ -1,22 +1,41 @@
 ---
 title: "Quickstart"
-description: "Make your first verification request."
+description: "Create a Bounceless API key and make your first verification request."
 ---
 
-Set your key locally and keep it out of source control:
+# Make your first verification request
+
+## 1. Get an API key
+
+[Create a Bounceless account](https://app.bounceless.io/signup), then open [Settings → API keys](https://app.bounceless.io/settings/api-keys) and create a key. Copy it immediately; the dashboard shows a newly minted key once.
+
+Set the key only in your current shell. Keep it out of source control, shell history, logs, screenshots, and prompts:
 
 ```bash
-export BOUNCELESS_API_KEY="blc.your_key"
+read -rsp "Bounceless API key: " BOUNCELESS_API_KEY && echo
+export BOUNCELESS_API_KEY
 ```
+
+## 2. Verify a controlled address
 
 ```bash
 curl --request POST https://api.bounceless.io/v1/verify \
+  --silent --show-error \
   --header "X-Api-Key: $BOUNCELESS_API_KEY" \
-  --header "Idempotency-Key: quickstart-001" \
+  --header "Idempotency-Key: 1c7c7e4e-172c-49d1-adf4-d9f97b801e41" \
   --header "Content-Type: application/json" \
-  --data '{"email":"test@example.com"}'
+  --data '{"email":"controlled@example.com"}'
 ```
 
-A completed request returns `200`; work still running returns `202`. Store the response `requestId` for support and observability.
+Use only an address you are authorized to test. A `200` response contains a completed result. A `202` means the bounded synchronous wait ended before the engine completed; it contains `engineJobId`, `requestId`, and a `presend` object with no decision and zero billed credits. The four-route GA API does not expose a single-result polling route. Record both IDs and do not automatically resubmit the address. Use the [batch flow](/verify-batch) when your integration requires a retrievable asynchronous result.
+
+## 3. Read the decision
+
+For a completed response, integrate against the additive `presend` object. Older sibling fields remain during the compatibility window. Start with `presend.status`, then read `presend.decision`, `presend.verdict`, `presend.reasons`, and `presend.billing`.
+
+<CardGroup cols={2}>
+  <Card title="API key safety" icon="key" href="/authentication">Store, rotate, and revoke keys.</Card>
+  <Card title="Decision dictionary" icon="list" href="/decisions-and-reason-codes">Interpret every public decision and verdict.</Card>
+</CardGroup>
 
 <Note>The interactive API playground asks you to paste a key for the current request. This documentation never pre-fills or persists it.</Note>

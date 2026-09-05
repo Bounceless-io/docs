@@ -1,12 +1,35 @@
 ---
 title: "API keys"
-description: "Authenticate safely with X-Api-Key."
+description: "Create, store, rotate, and revoke Bounceless API keys safely."
 ---
 
-Send your Bounceless key in the `X-Api-Key` header on every request.
+# API keys
+
+## Create a key
+
+1. [Create an account](https://app.bounceless.io/signup) or sign in.
+2. Open [Settings → API keys](https://app.bounceless.io/settings/api-keys).
+3. Create a key and copy it immediately. The complete token is shown once.
+
+Send the key in the canonical `X-Api-Key` header on every GA API request.
 
 ```bash
 --header "X-Api-Key: $BOUNCELESS_API_KEY"
 ```
 
-Keys use the `blc.…` format. Put the key in a secret manager or environment variable, never in code, logs, prompts, screenshots, or committed files. A missing or invalid key returns `401` with an `X-Request-Id` response header.
+Keys use the `blc.…` format. The server also accepts `Authorization: Bearer` for compatibility, but new integrations should use `X-Api-Key`.
+
+## Store and rotate keys
+
+Put each key in a secret manager or runtime environment variable. Never place it in code, logs, prompts, screenshots, URLs, committed `.env` files, or support messages.
+
+To rotate a key without downtime:
+
+1. Create a replacement key.
+2. Update every integration that uses the old key.
+3. Run one controlled request with the replacement.
+4. Revoke the old key in the dashboard.
+
+Revocation is immediate and cannot be undone. A missing, revoked, or invalid key returns `401` with an `X-Request-Id` response header. Use that request ID for diagnosis, without sharing the key.
+
+<Warning>Do not put an API key into an API playground URL or query parameter. Paste it only into the playground's request header field and remove it when you finish.</Warning>

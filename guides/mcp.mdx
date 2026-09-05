@@ -1,0 +1,48 @@
+---
+title: "MCP"
+description: "Configure the local Bounceless product MCP server without confusing it with the documentation MCP transport."
+---
+
+# Use Bounceless with MCP
+
+There are two separate MCP services:
+
+| Service | Purpose | Credential |
+| --- | --- | --- |
+| `@bounceless/mcp` | Local product server that calls the Bounceless GA API | `BOUNCELESS_API_KEY` in the client's secret environment |
+| Bounceless Docs MCP | Mintlify transport for searching and reading public documentation | Client-specific documentation OAuth; never a Bounceless product API key |
+
+The human guide lives at `/guides/mcp`. The `/mcp` path is reserved for Mintlify's MCP transport and is not a human HTML guide.
+
+## Configure the product server
+
+The product package runs locally over stdio. Configure the API key in the MCP client's secret environment, not in a prompt or committed configuration:
+
+```json
+{
+  "mcpServers": {
+    "bounceless": {
+      "command": "npx",
+      "args": ["-y", "@bounceless/mcp@1.0.0"],
+      "env": { "BOUNCELESS_API_KEY": "${BOUNCELESS_API_KEY}" }
+    }
+  }
+}
+```
+
+Version 1.0 exposes exactly four product tools:
+
+| Tool | Operation |
+| --- | --- |
+| `verify_email` | Verify one email address. |
+| `verify_batch` | Submit addresses and receive a batch request ID. |
+| `get_job` | Read batch state and counters. |
+| `get_results` | Retrieve the batch result set. |
+
+Check the installed package version before relying on this surface. See [Migrate developer tools to 1.0](/migration) for the difference from 0.1.0.
+
+## Privacy boundary
+
+Product MCP tool inputs and structured results are visible to the MCP client and may enter that client's transcript or retention system. Use controlled addresses for tests, minimize the returned data, and review the client's retention policy. Never paste an API key into the conversation.
+
+The documentation MCP can search these public pages only. It does not expose product verification routes or tools.

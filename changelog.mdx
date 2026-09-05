@@ -3,8 +3,19 @@ title: "Changelog"
 description: "Public documentation changes."
 ---
 
+## Unreleased
+
+- Reworked onboarding from account creation to API key and first request.
+- Documented the single-verification `202` limit, the additive `presend` compatibility envelope, decisions, reason codes, credits, and bounded retries.
+- Made cursor pagination canonical while retaining offset compatibility.
+- Replaced the unsupported CLI wait example with `submit`, `status`, and `results` commands and explicit JSON/CSV redirection.
+- Moved the human MCP guide to `/guides/mcp`; `/mcp` remains reserved for Mintlify's documentation transport.
+- Added the developer-tools 1.0 migration, contribution path, and Bounceless visual identity.
+
 ## 2026-09-04
 
-- Added GA documentation for single and batch verification.
-- Added the four-route downloadable OpenAPI contract.
-- Added API key, errors, idempotency, rate-limit, MCP, CLI, and agent onboarding guides.
+- Merged the initial source for single and batch verification documentation.
+- Added a four-route downloadable OpenAPI source contract.
+- Added draft API key, errors, idempotency, rate-limit, MCP, CLI, and agent onboarding guides.
+
+<Note>A source merge is not evidence that a package or the documentation domain is publicly available. Release entries name publication and runtime verification separately once those checks occur.</Note>

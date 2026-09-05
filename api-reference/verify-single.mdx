@@ -4,4 +4,8 @@ description: "Run a single email verification."
 openapi: "POST /v1/verify"
 ---
 
-Provide `X-Api-Key` in the playground yourself. The documentation does not prefill or persist credentials.
+This page renders the machine-readable request, response, and status-code contract from `openapi.yaml`. Use it to inspect field shapes; use the [single-verification guide](/verify-single) for the operational workflow.
+
+Provide the canonical `X-Api-Key` header in the playground yourself. The specification also models HTTP Bearer authentication for existing integrations, but new code should use `X-Api-Key`. The documentation does not prefill or persist either credential.
+
+HTTP `200` includes the completed Pre-Send decision and engine metadata. HTTP `202` represents accepted or still-running work, carries no decision, and has no public single-result polling route in the four-route GA contract. Treat those response shapes separately in generated clients.

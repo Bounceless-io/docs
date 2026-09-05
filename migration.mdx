@@ -1,0 +1,27 @@
+---
+title: "Migrate developer tools to 1.0"
+description: "Move from the Bounceless MCP 0.1 surface to the four-tool 1.0 contract and adopt the CLI."
+---
+
+# Migrate developer tools to 1.0
+
+Version 1.0 aligns the product MCP server and CLI with the four-route GA API. Source, package, registry availability, and runtime behavior are separate states; confirm the exact installed version before changing production automation.
+
+## MCP 0.1 to 1.0
+
+The 1.0 product MCP surface contains exactly `verify_email`, `verify_batch`, `get_job`, and `get_results`.
+
+| 0.1 tool | 1.0 action |
+| --- | --- |
+| `presend_check` | Use `verify_email` and read its additive `presend` response. |
+| `doorman_check` | No 1.0 MCP replacement; keep that workflow outside the GA MCP package. |
+| `get_credits` | No 1.0 MCP replacement; use the Bounceless dashboard. |
+| `get_pricing` | No 1.0 MCP replacement; use the [pricing page](https://www.bounceless.io/pricing). |
+
+Pin `@bounceless/mcp@1.0.0`, restart the MCP client, run `initialize`, and verify that `tools/list` returns the four names above. The 0.1 package remains addressable by exact version; no automatic deprecation date is implied.
+
+## Adopt the CLI
+
+The CLI uses `verify`, `batch submit`, `batch status`, and `batch results`. `batch results --output` accepts `json` or `csv` and writes to stdout. It does not implement a wait flag.
+
+Before moving automation, run `npx @bounceless/cli@1.0.0 --help` without a key, then test the workflow against controlled fixtures. Store `BOUNCELESS_API_KEY` in the runtime secret environment and redirect outputs to access-controlled files.

@@ -2,15 +2,27 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Bounceless",
+  "description": "Integrate Bounceless email verification through the GA API, CLI, MCP server, or agent skill.",
   "colors": {
-    "primary": "#0F766E",
-    "light": "#14B8A6",
-    "dark": "#5EEAD4"
+    "primary": "#C43C00",
+    "light": "#FF4D00",
+    "dark": "#C43C00"
   },
   "favicon": "/favicon.svg",
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "https://www.bounceless.io/"
+  },
+  "appearance": {
+    "default": "light",
+    "strict": true
+  },
+  "fonts": {
+    "family": "Inter"
+  },
+  "background": {
+    "decoration": "grid"
   },
   "navigation": {
     "groups": [
@@ -19,7 +31,8 @@
         "pages": [
           "index",
           "quickstart",
-          "authentication"
+          "authentication",
+          "integration-options"
         ]
       },
       {
@@ -27,13 +40,14 @@
         "pages": [
           "verify-single",
           "verify-batch",
+          "decisions-and-reason-codes",
           "errors"
         ]
       },
       {
         "group": "Tools",
         "pages": [
-          "mcp",
+          "guides/mcp",
           "cli",
           "agent-guide"
         ]
@@ -50,7 +64,9 @@
       {
         "group": "Changes",
         "pages": [
-          "changelog"
+          "migration",
+          "changelog",
+          "contributing"
         ]
       }
     ]
@@ -58,7 +74,8 @@
   "api": {
     "openapi": "openapi.yaml",
     "playground": {
-      "display": "interactive"
+      "display": "interactive",
+      "credentials": false
     },
     "examples": {
       "languages": [
@@ -68,9 +85,44 @@
       "prefill": false
     }
   },
+  "navbar": {
+    "links": [
+      {
+        "label": "Website",
+        "href": "https://www.bounceless.io/"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://app.bounceless.io/"
+    }
+  },
+  "seo": {
+    "indexing": "navigable"
+  },
+  "search": {
+    "prompt": "Search API keys, batch results, decisions, errors, CLI, and MCP"
+  },
   "footer": {
     "socials": {
       "github": "https://github.com/Bounceless-io"
-    }
+    },
+    "links": [
+      {
+        "header": "Product",
+        "items": [
+          { "label": "Pricing", "href": "https://www.bounceless.io/pricing" },
+          { "label": "Sign up", "href": "https://app.bounceless.io/signup" }
+        ]
+      },
+      {
+        "header": "Legal",
+        "items": [
+          { "label": "Terms", "href": "https://www.bounceless.io/legal/terms" },
+          { "label": "Privacy", "href": "https://www.bounceless.io/legal/privacy" }
+        ]
+      }
+    ]
   }
 }

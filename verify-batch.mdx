@@ -1,23 +1,81 @@
 ---
 title: "Verify batch"
-description: "Submit a batch, poll its status, and retrieve results."
+description: "Submit a batch, poll it to completion, and retrieve every JSON or CSV result."
 ---
 
-Create a request. The first submission returns `202`; replaying the same body with the same `Idempotency-Key` returns `200` and the same `request.id`.
+# Verify a batch
+
+A batch accepts exactly one input source: an inline `emails` array containing `1`–`10000` addresses, or the `listId` of a ready list already stored in your account. Do not send both fields. The first accepted submission returns `202`; replaying the identical body with the same `Idempotency-Key` returns `200`, `replayed: true`, and the same `request.id`.
+
+## 1. Submit and capture the request ID
 
 ```bash
 curl -sS https://api.bounceless.io/v1/requests -X POST \
   -H "X-Api-Key: $BOUNCELESS_API_KEY" \
-  -H "Idempotency-Key: batch-001" \
+  -H "Idempotency-Key: e7b10db7-ce34-4e91-a6f5-cf102b277bd8" \
   -H "Content-Type: application/json" \
-  -d '{"emails":["first@example.com","second@example.com"]}'
+  -d '{"emails":["first@example.com","second@example.com"]}' \
+  > batch-submit.json
+
+REQUEST_ID="$(jq -er '.request.id' batch-submit.json)"
 ```
 
-Poll and retrieve a page of results:
+`jq` is required by the shell examples. Keep request and result files in access-controlled storage because they contain email addresses.
+
+To submit an existing ready list instead, keep the same headers and send only its ID:
+
+```json
+{ "listId": "00000000-0000-4000-8000-000000000815" }
+```
+
+The four-route GA contract does not add a list-creation route. Create or import the list in the dashboard before using this mode.
+
+## 2. Poll with a bound
+
+The status response carries `request.state`, `request.partial`, and `request.finalized`. Poll at a bounded interval and stop after a fixed number of attempts:
 
 ```bash
-curl -sS "https://api.bounceless.io/v1/requests/$REQUEST_ID" -H "X-Api-Key: $BOUNCELESS_API_KEY"
-curl -sS "https://api.bounceless.io/v1/requests/$REQUEST_ID/results?limit=50&offset=0" -H "X-Api-Key: $BOUNCELESS_API_KEY"
+for attempt in $(seq 1 60); do
+  curl -sS "https://api.bounceless.io/v1/requests/$REQUEST_ID" \
+    -H "X-Api-Key: $BOUNCELESS_API_KEY" > batch-status.json
+  jq '{state: .request.state, partial: .request.partial, finalized: .request.finalized, countsMayChange: .request.countsMayChange, counters, requestId}' batch-status.json
+  [ "$(jq -r '.request.finalized' batch-status.json)" = "true" ] && break
+  sleep 2
+done
+
+[ "$(jq -r '.request.finalized' batch-status.json)" = "true" ] || {
+  echo "Batch did not finalize within the polling budget" >&2
+  exit 1
+}
 ```
 
-Continue paging while results remain. `partial` indicates an incomplete page and `finalized` indicates that processing is complete.
+While `partial` is true, result pages are a progress view, not proof that collection is complete. `countsMayChange: true` means later processing can still change the counters; terminal non-finalized failures can be partial while reporting `countsMayChange: false`. For a complete export, wait for `finalized: true`, then paginate.
+
+## 3. Retrieve every result with the cursor
+
+`limit` accepts `1`–`200`. `cursor`/`nextCursor` is the canonical pagination contract. Continue until `nextCursor` is `null`; treat cursors as opaque. `offset` remains available for compatibility but should not be used for a new full export.
+
+```bash
+: > batch-results.jsonl
+CURSOR=""
+while :; do
+  if [ -n "$CURSOR" ]; then
+    PAGE_URL="https://api.bounceless.io/v1/requests/$REQUEST_ID/results?limit=200&cursor=$(printf '%s' "$CURSOR" | jq -sRr @uri)"
+  else
+    PAGE_URL="https://api.bounceless.io/v1/requests/$REQUEST_ID/results?limit=200"
+  fi
+
+  curl -sS "$PAGE_URL" -H "X-Api-Key: $BOUNCELESS_API_KEY" > batch-page.json
+  jq -c '.results[]' batch-page.json >> batch-results.jsonl
+  CURSOR="$(jq -r '.nextCursor // empty' batch-page.json)"
+  [ -z "$CURSOR" ] && break
+done
+```
+
+The API returns JSON. To create a CSV from the same final results with the CLI, use:
+
+```bash
+npx @bounceless/cli batch results "$REQUEST_ID" --output csv > batch-results.csv
+```
+
+If an API request returns `429`, wait for the `Retry-After` duration and retry with jitter. See [Errors, limits, credits, and retries](/errors).

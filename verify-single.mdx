@@ -1,17 +1,77 @@
 ---
 title: "Verify single"
-description: "Verify one email address."
+description: "Verify one email address and handle completed or accepted responses."
 ---
 
-`POST /v1/verify` accepts one address and a required idempotency key.
+# Verify one email
+
+`POST /v1/verify` accepts one email address and a required idempotency key. Use a unique key for a new logical operation and reuse it only for an identical request body.
 
 ```bash
 curl -sS https://api.bounceless.io/v1/verify \
   -X POST \
   -H "X-Api-Key: $BOUNCELESS_API_KEY" \
-  -H "Idempotency-Key: verify-$(date +%s)" \
+  -H "Idempotency-Key: 91d0b8cf-6e17-4dd3-9617-38af85d78089" \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","timeoutMs":30000}'
+  -d '{"email":"controlled@example.com","timeoutMs":30000}'
 ```
 
-The response contains `status`, `requestId`, and the available result fields. Treat unknown outcomes as inconclusive; they are not billed.
+`timeoutMs` is optional and accepts `1`–`120000` milliseconds. It bounds the synchronous wait; it does not change verification quality.
+
+## Completed: HTTP 200
+
+```json
+{
+  "status": "completed",
+  "presend": {
+    "contract_version": 1,
+    "status": "completed",
+    "outcome": "actionable_verdict",
+    "decision": "send",
+    "verdict": "DELIVERABLE",
+    "provider_family": "gmail",
+    "confidence": 0.95,
+    "reasons": ["mailbox_confirmed"],
+    "evidence_class": null,
+    "retry": null,
+    "billing": { "disposition": "debited", "credits": 1 },
+    "history": null
+  },
+  "engine": {
+    "verifiedAt": "2026-09-05T00:00:00.000Z",
+    "attempts": 1,
+    "providerFamily": "gmail"
+  },
+  "requestId": "req_example_200"
+}
+```
+
+The `engine` object reports when the check completed, how many engine attempts ran, and the provider family used. It is present on a completed `200`, not on an accepted `202`. The exact credit count comes from the response; do not hard-code it. See the [decision dictionary](/decisions-and-reason-codes) before automating an action.
+
+## Accepted: HTTP 202
+
+```json
+{
+  "status": "running",
+  "presend": {
+    "contract_version": 1,
+    "status": "running",
+    "outcome": "pending",
+    "decision": null,
+    "verdict": null,
+    "provider_family": null,
+    "confidence": null,
+    "reasons": [],
+    "evidence_class": null,
+    "retry": null,
+    "billing": { "disposition": "released", "credits": 0 },
+    "history": null
+  },
+  "engineJobId": "00000000-0000-4000-8000-000000000202",
+  "requestId": "req_example_202"
+}
+```
+
+This response does not contain a send decision. The GA API does not expose a public polling route for this single engine job. Record `engineJobId` and `requestId`; do not treat `202` as deliverable and do not build an unbounded resubmission loop. Use batch verification when a final result must be retrieved asynchronously.
+
+Unknown and other non-verdict outcomes are inconclusive and are not billed. Verification does not guarantee inbox placement.

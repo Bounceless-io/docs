@@ -1,0 +1,23 @@
+---
+title: "Feedback, contributions, and security"
+description: "Propose a documentation correction or report a Bounceless security issue safely."
+---
+
+# Feedback, contributions, and security
+
+The public documentation source is [Bounceless-io/docs](https://github.com/Bounceless-io/docs). The public CLI and product MCP source is [Bounceless-io/bounceless-devtools](https://github.com/Bounceless-io/bounceless-devtools). Private product repositories are not part of the public contribution surface.
+
+## Propose a documentation change
+
+1. Branch from the current `main` commit.
+2. Keep API claims tied to a current public contract or a named Bounceless source.
+3. Run `npm ci --include=dev --ignore-scripts` and `npm run check`.
+4. Open a pull request that names the changed pages, snippets exercised, and remaining live-only checks.
+
+For a small correction without a patch, email [contact@bounceless.io](mailto:contact@bounceless.io). Do not include API keys, customer email addresses, uploaded lists, or raw result exports.
+
+## Report a vulnerability
+
+Use [GitHub private vulnerability reporting](https://github.com/Bounceless-io/docs/security/advisories/new) for suspected secret exposure or a documentation-site security issue. Do not open a public issue containing exploit details, credentials, or private data.
+
+The same rule applies to examples and test evidence: use synthetic addresses, redact tokens, and distinguish a local/mock result from a production result.
