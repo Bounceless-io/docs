@@ -18,6 +18,13 @@ export BOUNCELESS_API_KEY
 
 ## 2. Verify a controlled address
 
+Choose the path before you automate it:
+
+| Need | Use |
+| --- | --- |
+| One address, where your integration can handle an immediate `200` and treat `202` as accepted without a retrievable final result | [Single verification](/verify-single) |
+| A final result that can be retrieved asynchronously, or more than one address | [Batch verification](/verify-batch) |
+
 ```bash
 curl --request POST https://api.bounceless.io/v1/verify \
   --silent --show-error \
@@ -38,4 +45,4 @@ For a completed response, integrate against the additive `presend` object. Older
   <Card title="Decision dictionary" icon="list" href="/decisions-and-reason-codes">Interpret every public decision and verdict.</Card>
 </CardGroup>
 
-<Note>The interactive API playground asks you to paste a key for the current request. This documentation never pre-fills or persists it.</Note>
+<Note>The hosted playground's handling of an entered key is verified separately before public launch. Until that browser check is complete, use the curl example from a controlled shell rather than entering a production key in the playground.</Note>

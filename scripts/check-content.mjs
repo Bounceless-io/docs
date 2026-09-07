@@ -46,6 +46,27 @@ const unsupportedWaitFlag = `--${'wait'}`;
 assert.ok(prose.every((page) => !page.includes(unsupportedWaitFlag)), 'unsupported wait flag must not appear');
 assert.ok(!navigated.includes('mcp'), '/mcp is reserved for the docs transport');
 
+const quickstart = await read('quickstart.mdx');
+assert.match(quickstart, /A final result that can be retrieved asynchronously[\s\S]*?\/verify-batch/);
+assert.doesNotMatch(quickstart, /never (?:pre-fills or )?persists/i, 'playground persistence requires browser proof');
+const apiSingle = await read('api-reference/verify-single.mdx');
+assert.doesNotMatch(apiSingle, /does not (?:prefill or )?persist/i, 'API reference must not infer playground persistence');
+
+const batchGuide = await read('verify-batch.mdx');
+assert.match(batchGuide, /\{\/\* batch-results-script:start \*\/\}[\s\S]*\{\/\* batch-results-script:end \*\/\}/);
+assert.match(batchGuide, /Batch result page failed with HTTP/);
+assert.match(batchGuide, /\.partial\.XXXXXX/);
+
+const readme = await read('README.md');
+assert.ok(readme.startsWith('# Bounceless Documentation\n'));
+for (const href of [
+  'https://docs.bounceless.io/quickstart',
+  'https://docs.bounceless.io/api-reference/verify-single',
+  'https://docs.bounceless.io/cli',
+  'https://docs.bounceless.io/guides/mcp',
+  'https://docs.bounceless.io/contributing',
+]) assert.ok(readme.includes(href), `README must link to ${href}`);
+
 const skill = await read('skill.md');
 for (const copy of [
   '.well-known/agent-skills/bounceless/SKILL.md',

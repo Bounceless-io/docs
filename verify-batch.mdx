@@ -55,22 +55,125 @@ While `partial` is true, result pages are a progress view, not proof that collec
 
 `limit` accepts `1`–`200`. `cursor`/`nextCursor` is the canonical pagination contract. Continue until `nextCursor` is `null`; treat cursors as opaque. `offset` remains available for compatibility but should not be used for a new full export.
 
+The script below writes pages to a temporary file and replaces the final export only after a validated terminal page. It retries `429` and temporary `5xx` responses within explicit attempt and delay bounds. A permanent HTTP error, invalid JSON, missing `nextCursor`, repeated cursor, or page-budget overrun exits non-zero and preserves any earlier completed export.
+
+{/* batch-results-script:start */}
 ```bash
-: > batch-results.jsonl
+set -euo pipefail
+
+: "${BOUNCELESS_API_KEY:?Set BOUNCELESS_API_KEY before exporting results}"
+: "${REQUEST_ID:?Run the submit step and set REQUEST_ID first}"
+
+BOUNCELESS_API_BASE="${BOUNCELESS_API_BASE:-https://api.bounceless.io}"
+RESULTS_FILE="${BATCH_RESULTS_FILE:-batch-results.jsonl}"
+MAX_RETRIES="${BATCH_EXPORT_MAX_RETRIES:-4}"
+RETRY_DELAY_SECONDS="${BATCH_EXPORT_RETRY_DELAY_SECONDS:-2}"
+MAX_RETRY_DELAY_SECONDS="${BATCH_EXPORT_MAX_RETRY_DELAY_SECONDS:-30}"
+MAX_JITTER_SECONDS="${BATCH_EXPORT_MAX_JITTER_SECONDS:-1}"
+MAX_PAGES="${BATCH_EXPORT_MAX_PAGES:-1000}"
+
+require_integer() {
+  case "$2" in
+    ''|*[!0-9]*) echo "$1 must be a non-negative integer" >&2; exit 1 ;;
+  esac
+}
+
+require_integer BATCH_EXPORT_MAX_RETRIES "$MAX_RETRIES"
+require_integer BATCH_EXPORT_RETRY_DELAY_SECONDS "$RETRY_DELAY_SECONDS"
+require_integer BATCH_EXPORT_MAX_RETRY_DELAY_SECONDS "$MAX_RETRY_DELAY_SECONDS"
+require_integer BATCH_EXPORT_MAX_JITTER_SECONDS "$MAX_JITTER_SECONDS"
+require_integer BATCH_EXPORT_MAX_PAGES "$MAX_PAGES"
+[ "$MAX_RETRIES" -ge 1 ] || { echo "BATCH_EXPORT_MAX_RETRIES must be at least 1" >&2; exit 1; }
+[ "$MAX_PAGES" -ge 1 ] || { echo "BATCH_EXPORT_MAX_PAGES must be at least 1" >&2; exit 1; }
+
+TEMP_RESULTS="$(mktemp "${RESULTS_FILE}.partial.XXXXXX")"
+PAGE_BODY="$(mktemp)"
+PAGE_HEADERS="$(mktemp)"
+cleanup() {
+  rm -f "$PAGE_BODY" "$PAGE_HEADERS"
+  [ -z "${TEMP_RESULTS:-}" ] || rm -f "$TEMP_RESULTS"
+}
+trap cleanup EXIT HUP INT TERM
+
 CURSOR=""
+SEEN_CURSORS="|"
+PAGE_COUNT=0
 while :; do
+  PAGE_COUNT=$((PAGE_COUNT + 1))
+  [ "$PAGE_COUNT" -le "$MAX_PAGES" ] || {
+    echo "Batch export exceeded the $MAX_PAGES-page safety bound" >&2
+    exit 1
+  }
+
   if [ -n "$CURSOR" ]; then
-    PAGE_URL="https://api.bounceless.io/v1/requests/$REQUEST_ID/results?limit=200&cursor=$(printf '%s' "$CURSOR" | jq -sRr @uri)"
+    PAGE_URL="$BOUNCELESS_API_BASE/v1/requests/$REQUEST_ID/results?limit=200&cursor=$(printf '%s' "$CURSOR" | jq -sRr @uri)"
   else
-    PAGE_URL="https://api.bounceless.io/v1/requests/$REQUEST_ID/results?limit=200"
+    PAGE_URL="$BOUNCELESS_API_BASE/v1/requests/$REQUEST_ID/results?limit=200"
   fi
 
-  curl -sS "$PAGE_URL" -H "X-Api-Key: $BOUNCELESS_API_KEY" > batch-page.json
-  jq -c '.results[]' batch-page.json >> batch-results.jsonl
-  CURSOR="$(jq -r '.nextCursor // empty' batch-page.json)"
-  [ -z "$CURSOR" ] && break
+  ATTEMPT=1
+  while :; do
+    : > "$PAGE_BODY"
+    : > "$PAGE_HEADERS"
+    if ! HTTP_STATUS="$(curl --silent --show-error \
+      --dump-header "$PAGE_HEADERS" \
+      --output "$PAGE_BODY" \
+      --write-out '%{http_code}' \
+      "$PAGE_URL" \
+      -H "X-Api-Key: $BOUNCELESS_API_KEY")"; then
+      echo "Batch result request failed before an HTTP response" >&2
+      exit 1
+    fi
+
+    case "$HTTP_STATUS" in
+      200) break ;;
+      429|500|502|503|504)
+        [ "$ATTEMPT" -lt "$MAX_RETRIES" ] || {
+          echo "Batch result page failed with HTTP $HTTP_STATUS after $ATTEMPT attempts" >&2
+          exit 1
+        }
+        RETRY_AFTER="$(awk 'tolower($1) == "retry-after:" { gsub("\\r", "", $2); value=$2 } END { print value }' "$PAGE_HEADERS")"
+        case "$RETRY_AFTER" in
+          ''|*[!0-9]*) WAIT_SECONDS=$((RETRY_DELAY_SECONDS * ATTEMPT)) ;;
+          *) WAIT_SECONDS="$RETRY_AFTER" ;;
+        esac
+        if [ "$MAX_JITTER_SECONDS" -gt 0 ]; then
+          WAIT_SECONDS=$((WAIT_SECONDS + ATTEMPT % (MAX_JITTER_SECONDS + 1)))
+        fi
+        [ "$WAIT_SECONDS" -le "$MAX_RETRY_DELAY_SECONDS" ] || WAIT_SECONDS="$MAX_RETRY_DELAY_SECONDS"
+        echo "HTTP $HTTP_STATUS; retrying in ${WAIT_SECONDS}s ($ATTEMPT/$MAX_RETRIES)" >&2
+        sleep "$WAIT_SECONDS"
+        ATTEMPT=$((ATTEMPT + 1))
+        ;;
+      *)
+        ERROR_CODE="$(jq -r '.error.code? // empty' "$PAGE_BODY" 2>/dev/null || true)"
+        echo "Batch result page failed with HTTP $HTTP_STATUS (${ERROR_CODE:-no structured error code})" >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  jq -e '(.results | type == "array") and has("nextCursor") and ((.nextCursor == null) or (.nextCursor | type == "string"))' "$PAGE_BODY" >/dev/null || {
+    echo "Batch result page is not valid results JSON" >&2
+    exit 1
+  }
+  jq -c '.results[]' "$PAGE_BODY" >> "$TEMP_RESULTS"
+  NEXT_CURSOR="$(jq -r 'if .nextCursor == null then "" else .nextCursor end' "$PAGE_BODY")"
+  [ -n "$NEXT_CURSOR" ] || break
+  case "$SEEN_CURSORS" in
+    *"|$NEXT_CURSOR|"*) echo "Batch result cursor repeated; refusing an incomplete export" >&2; exit 1 ;;
+  esac
+  SEEN_CURSORS="${SEEN_CURSORS}${NEXT_CURSOR}|"
+  CURSOR="$NEXT_CURSOR"
 done
+
+mv -f -- "$TEMP_RESULTS" "$RESULTS_FILE"
+TEMP_RESULTS=""
+rm -f "$PAGE_BODY" "$PAGE_HEADERS"
+trap - EXIT HUP INT TERM
+printf 'Export complete: %s\n' "$RESULTS_FILE"
 ```
+{/* batch-results-script:end */}
 
 The API returns JSON. To create a CSV from the same final results with the CLI, use:
 
@@ -78,4 +181,4 @@ The API returns JSON. To create a CSV from the same final results with the CLI, 
 npx @bounceless/cli batch results "$REQUEST_ID" --output csv > batch-results.csv
 ```
 
-If an API request returns `429`, wait for the `Retry-After` duration and retry with jitter. See [Errors, limits, credits, and retries](/errors).
+The environment overrides in the script are operational safety bounds, not API parameters. Keep them finite and see [Errors, limits, credits, and retries](/errors) before changing them.
