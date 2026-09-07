@@ -1,17 +1,49 @@
 ---
 title: "Errors, limits, and retries"
-description: "Handle request errors and retries safely."
+description: "Handle API errors, limits, credits, idempotency, and retries safely."
 ---
 
+# Errors, limits, credits, and retries
+
 Errors use an `error` object with `code`, `message`, and `requestId`. Responses also carry `X-Request-Id`.
+
+```json
+{
+  "error": {
+    "code": "invalid_request",
+    "message": "The request body is invalid.",
+    "requestId": "req_example_error"
+  }
+}
+```
 
 | Status | Meaning | Action |
 | --- | --- | --- |
 | `400` / `422` | Invalid input | Fix the request; do not retry unchanged. |
 | `401` | Missing or invalid key | Check `X-Api-Key` without logging it. |
-| `402` | Account cannot fund this operation | Resolve the account state. |
+| `402` | Account cannot fund this operation | Review the account balance and pricing before retrying. |
 | `404` | Request is absent or belongs to another account | Check the request ID and key. |
 | `429` | Rate limit exceeded | Wait for `Retry-After`, then retry with jitter. |
 | `502` / `503` | Temporary upstream or service failure | Retry with exponential backoff. |
 
-Reuse the same `Idempotency-Key` only for an identical write. Never rotate the key merely because a response timed out.
+The stable `error.code` is intended for program logic; the message adds diagnostic context. Preserve unknown future codes and fall back to the HTTP status.
+
+## Contract limits
+
+| Input | Bound |
+| --- | --- |
+| Single email length | At most 320 characters |
+| Single `timeoutMs` | `1`–`120000` milliseconds |
+| Batch size | `1`–`10000` addresses |
+| Results page `limit` | `1`–`200`; default `50` |
+| Results `offset` | `0` or greater; compatibility only for new integrations |
+
+Rate limits vary by account policy. On `429`, read `Retry-After`, wait that many seconds, add jitter, and keep a maximum attempt or elapsed-time bound. Retry `502`/`503` with exponential backoff. Do not retry `400`, `401`, `402`, `404`, or `422` unchanged.
+
+## Idempotency and credits
+
+Reuse the same `Idempotency-Key` only for an identical write. Never rotate the key merely because a response timed out. A new key represents a new logical operation and can create new work.
+
+Unknown and other non-verdict outcomes are not billed. Credits do not expire. Read the returned billing fields rather than inferring a charge from the HTTP status.
+
+For help, retain the `requestId`, HTTP status, timestamp, and endpoint. Do not include the API key or customer email addresses in a support message. See [API key safety](/authentication) and [feedback and security](/contributing).

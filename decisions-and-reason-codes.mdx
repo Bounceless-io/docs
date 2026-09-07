@@ -1,0 +1,50 @@
+---
+title: "Decisions and reason codes"
+description: "Interpret Bounceless Pre-Send decisions, verification verdicts, and reason codes."
+---
+
+# Decisions and reason codes
+
+The additive `presend` object is the canonical decision envelope for new consumers. It separates what Bounceless observed (`verdict`) from the recommended action (`decision`). Legacy sibling fields remain during the version 1 compatibility window.
+
+## Decisions
+
+| `presend.decision` | Meaning | Safe default |
+| --- | --- | --- |
+| `send` | The mailbox was confirmed. | Continue under your own sending policy. |
+| `suppress` | The address should not be sent to. | Suppress it from the send. |
+| `send_with_caution` | The observation is usable but carries material risk. | Apply stricter campaign and monitoring rules. |
+| `enrich_first` | A catch-all result does not establish mailbox existence. | Gather authorized context or recheck; do not treat it as deliverable. |
+| `recheck_later` | The result is transient or inconclusive. | Wait for the documented retry window when present. |
+| `manual_review` | Available evidence is insufficient for an automated action. | Route to a human or your own policy review. |
+| `do_not_decide` | No public decision can be made. | Stop automation and retain the diagnostic request ID. |
+
+A `null` decision means there is no actionable verdict. Never coerce it to `send`.
+
+## Public verdicts and primary reasons
+
+| `presend.verdict` | Default decision | Primary reason |
+| --- | --- | --- |
+| `DELIVERABLE` | `send` | `mailbox_confirmed` |
+| `UNDELIVERABLE_NO_MAILBOX` | `suppress` | `no_mailbox` |
+| `UNDELIVERABLE_NO_MAIL_SERVER` | `suppress` | `no_mail_server` |
+| `UNDELIVERABLE_BOUNCED` | `suppress` | `would_hard_bounce` |
+| `CATCH_ALL` | `enrich_first` | `catch_all_unproven` |
+| `MAILBOX_FULL` | `send_with_caution` | `mailbox_full` |
+| `DISPOSABLE` | `suppress` | `disposable_domain` |
+| `ROLE` | `send_with_caution` | `role_address` |
+| `SPAMTRAP` | `suppress` | `spamtrap` |
+| `RISKY_SPAMTRAP` | `suppress` | `risky_spamtrap` |
+| `BLACKLISTED` | `suppress` | `sender_blacklisted` |
+| `GREYLISTED` | `recheck_later` | `greylisted_retry` |
+| `TRANSIENT` | `recheck_later` | `transient_retry` |
+| `UNKNOWN` | `recheck_later` | `undetermined` |
+| `UNKNOWN_WEBMAIL` | `recheck_later` | `webmail_undetermined` |
+
+`presend.reasons` may include additional evidence, retry, or billing reason codes. Treat the array as ordered machine-readable evidence, preserve unknown future codes, and branch on the decision rather than parsing human text.
+
+## Billing and confidence
+
+`presend.billing.disposition` states whether credits were debited, held, or released; `presend.billing.credits` is the amount for that response. Unknown and other non-verdict outcomes are not billed. Purchased credits do not expire.
+
+`confidence` describes confidence in the verification decision, not the probability of inbox placement. Bounceless verification cannot guarantee inbox placement or sender-reputation outcomes.

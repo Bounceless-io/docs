@@ -5,3 +5,7 @@ openapi: "GET /v1/requests/{id}"
 ---
 
 The request is visible only to the account identified by the pasted `X-Api-Key`.
+
+Do not treat a partial request as a complete export. Wait for `request.finalized: true`, then retrieve every results page.
+
+Use the returned counters for progress reporting. Keep polling frequency bounded, surface an operational timeout to the caller, and retain the correlation ID when a job stops advancing. A terminal response describes the batch as a whole; individual decisions remain on the results endpoint.

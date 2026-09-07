@@ -1,14 +1,24 @@
 ---
 title: "CLI"
-description: "Verify single addresses and batches from a shell."
+description: "Run exact single and batch verification commands from a shell."
 ---
 
-Configure the key once in your shell, then use the Bounceless CLI:
+# Use the CLI
+
+Install or run the exact 1.0 package after confirming that version is available in your registry. Configure the key in the current shell, then use the implemented command tree:
 
 ```bash
-export BOUNCELESS_API_KEY="blc.your_key"
-npx @bounceless/cli verify test@example.com
-npx @bounceless/cli batch ./emails.txt --wait --output results.jsonl
+read -rsp "Bounceless API key: " BOUNCELESS_API_KEY && echo
+export BOUNCELESS_API_KEY
+
+npx @bounceless/cli@1.0.0 verify controlled@example.com
+npx @bounceless/cli@1.0.0 batch submit ./emails.csv > batch-submit.json
+REQUEST_ID="$(jq -er '.request.id' batch-submit.json)"
+npx @bounceless/cli@1.0.0 batch status "$REQUEST_ID" > batch-status.json
+npx @bounceless/cli@1.0.0 batch results "$REQUEST_ID" --output json > batch-results.json
+npx @bounceless/cli@1.0.0 batch results "$REQUEST_ID" --output csv > batch-results.csv
 ```
 
-Keep input and result files out of public repositories. For automation, inspect the exit code and store results in access-controlled storage.
+The CSV input parser reads the first column and skips a first-row `email` header. `batch results` writes to stdout; shell redirection creates the file. There is no wait flag. Poll with `batch status`, apply an attempt/time bound, and request results only after `request.finalized` is true.
+
+Keep input and result files out of public repositories. For automation, inspect the exit code and store outputs in access-controlled storage. CLI output can contain full email addresses and decisions.

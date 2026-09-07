@@ -1,1 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f766e"/><path d="M18 16h17c9 0 14 4 14 11 0 4-2 7-6 9 5 2 7 5 7 10 0 8-6 12-16 12H18V16zm10 9v8h7c3 0 5-1 5-4s-2-4-5-4h-7zm0 16v9h8c4 0 6-2 6-5s-2-4-6-4h-8z" fill="white"/></svg>
+<svg width="146" height="29" viewBox="0 0 146 29" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bounceless">
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M6.52558 0.405762H0.0185547V11.5799H10.7292H13.1914C13.7235 10.506 14.0056 9.31178 14.0056 8.09248C14.0056 3.84722 10.6567 0.405762 6.52558 0.405762ZM13.4929 11.5874H13.1729L0 28.9642L13.1729 28.9355H13.4929C18.1546 28.9355 21.9336 25.052 21.9336 20.2614C21.9336 15.4709 18.1546 11.5874 13.4929 11.5874Z" fill="#FF4D00"/>
+  <text x="34" y="22" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="600" letter-spacing="-0.8">bounceless</text>
+</svg>

@@ -1,13 +1,29 @@
 ---
 title: "Bounceless documentation"
-description: "Verify one email or a batch through the API, MCP server, or CLI."
+description: "Create an API key and verify email addresses through the API, CLI, MCP server, or agent skill."
 ---
 
-# Email verification for applications and agents
+# Email verification, from key to decision
 
-Bounceless provides one contract for single and batch email verification. Start with the [quickstart](/quickstart), then choose the [API](/verify-single), [MCP server](/mcp), or [CLI](/cli).
+Bounceless gives applications and agents an explainable verification result and a Pre-Send decision. Start with a Bounceless account, create an API key, then choose the interface that fits your workflow.
+
+<Steps>
+  <Step title="Create an account">
+    [Sign up for Bounceless](https://app.bounceless.io/signup), then open the dashboard.
+  </Step>
+  <Step title="Create an API key">
+    Open [API keys](https://app.bounceless.io/settings/api-keys). Copy the new key when it appears; it is shown once.
+  </Step>
+  <Step title="Run a controlled check">
+    Follow the [quickstart](/quickstart) with a synthetic or otherwise authorized address. Keep the key out of source control, prompts, and screenshots.
+  </Step>
+</Steps>
 
 <CardGroup cols={2}>
-  <Card title="Verify one email" icon="envelope" href="/verify-single">Send one authenticated request.</Card>
-  <Card title="Verify a batch" icon="layer-group" href="/verify-batch">Submit, poll, and page through results.</Card>
+  <Card title="Choose an integration" icon="code-branch" href="/integration-options">Compare API, CLI, MCP, and agent workflows.</Card>
+  <Card title="Verify one email" icon="envelope" href="/verify-single">Handle both completed and accepted responses.</Card>
+  <Card title="Verify a batch" icon="layer-group" href="/verify-batch">Submit, poll, and page through every result.</Card>
+  <Card title="Interpret a decision" icon="route" href="/decisions-and-reason-codes">Map verdicts, decisions, and reason codes to safe actions.</Card>
 </CardGroup>
+
+Email verification reduces uncertainty; it does not guarantee inbox placement or sender-reputation outcomes.

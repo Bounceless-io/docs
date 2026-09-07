@@ -6,9 +6,11 @@ description: "Install the Bounceless skill for a coding agent."
 Install the raw skill from the documentation origin:
 
 ```bash
-npx skills add https://docs.bounceless.io
+npx skills add https://docs.bounceless.io --yes
 ```
 
-Then provide `BOUNCELESS_API_KEY` through the agent runtime's secret environment. The skill explains how to choose API, MCP, or CLI, including single verification, batch polling, results, and a safe smoke test.
+Then provide `BOUNCELESS_API_KEY` through the agent runtime's secret environment. Do not paste the value into a conversation. The skill explains how to choose API, product MCP, or CLI, including single `200`/`202`, batch polling, cursor pagination, and safe output handling.
 
 <Card title="Download raw skill.md" icon="download" href="/skill.md">Plain Markdown suitable for skill installers.</Card>
+
+The human MCP guide is [/guides/mcp](/guides/mcp). `/mcp` is reserved for the Mintlify documentation transport.

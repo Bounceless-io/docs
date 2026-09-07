@@ -4,4 +4,4 @@ description: "Retrieve a page of batch verification results."
 openapi: "GET /v1/requests/{id}/results"
 ---
 
-Use `limit` and `offset` to page through results until the response is finalized.
+Use `cursor` and the returned `nextCursor` for new integrations. Treat cursors as opaque and continue until `nextCursor` is `null` after the request is finalized. `offset` remains available for compatibility.

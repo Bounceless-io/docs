@@ -6,7 +6,10 @@
     "validate": "mint validate",
     "build": "mint export",
     "links": "mint broken-links",
-    "check": "npm run validate && npm run links && npm run build"
+    "sync:skill": "node scripts/sync-skill.mjs",
+    "verify:content": "node scripts/check-content.mjs",
+    "verify:examples": "node scripts/test-api-examples.mjs",
+    "check": "npm run verify:content && npm run verify:examples && npm run validate && npm run links && npm run build"
   },
   "devDependencies": {
     "mint": "4.2.873",

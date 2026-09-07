@@ -1,0 +1,19 @@
+---
+title: "Choose an integration"
+description: "Choose between the Bounceless API, CLI, local MCP server, and agent skill."
+---
+
+# Choose an integration
+
+All supported interfaces use the same account-scoped Bounceless API key. Choose by execution environment, not by a promise of different verification quality.
+
+| Interface | Best for | Start here | Important boundary |
+| --- | --- | --- | --- |
+| HTTP API | Applications and services | [Quickstart](/quickstart) | Four GA routes; `X-Api-Key` is canonical. |
+| CLI | Shell workflows and controlled exports | [CLI guide](/cli) | Writes results to stdout; redirect them to a protected file. |
+| Product MCP | MCP-capable local agents | [MCP guide](/guides/mcp) | `@bounceless/mcp` runs locally over stdio and exposes four product tools. |
+| Agent skill | Coding agents that can install skills | [Agent onboarding](/agent-guide) | Instructions only; the key remains in the agent runtime's secret environment. |
+
+The Mintlify documentation MCP is a separate read-only service for searching and reading these pages. It cannot verify an address and must not receive your product API key.
+
+For a synchronous one-address check, use [Verify single](/verify-single). For a retrievable asynchronous workflow or more than one address, use [Verify batch](/verify-batch).

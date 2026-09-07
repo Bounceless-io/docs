@@ -5,3 +5,5 @@ openapi: "POST /v1/requests"
 ---
 
 Use a stable `Idempotency-Key` for an identical submission. Creation returns `202`; a replay returns `200` with the same request ID.
+
+Capture `request.id`, then pass it to the status and results routes. A batch accepts up to 10,000 addresses.

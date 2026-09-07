@@ -3,10 +3,10 @@
   "skills": [
     {
       "name": "bounceless",
-      "description": "Verify individual email addresses or batches with Bounceless through its API, MCP server, or CLI.",
+      "description": "Verify individual email addresses or batches with Bounceless through its GA API, local MCP server, or CLI.",
       "type": "skill-md",
       "url": "https://docs.bounceless.io/.well-known/agent-skills/bounceless/SKILL.md",
-      "digest": "sha256:d95f62565f9271b1684a5cf200c897961c16fa99be6961b95b83c0e0695b566e"
+      "digest": "sha256:69bb6f8a3d78dc852b51e1b27e4410152eb2234c3844732ebcbf921e09fe3894"
     }
   ]
 }
